@@ -6,6 +6,8 @@ import '../brick_breaker.dart';
 import 'play_area.dart';
 import 'bat.dart';
 import 'brick.dart';
+import 'particle_effects.dart';
+import 'ball_trail_component.dart';
 
 class Ball extends CircleComponent
     with CollisionCallbacks, HasGameReference<BrickBreaker> {
@@ -18,18 +20,34 @@ class Ball extends CircleComponent
          radius: radius,
          anchor: Anchor.center,
          paint: Paint()
-           ..color = const Color(0xff1e6091)
+           ..color = const Color.fromARGB(255, 255, 255, 255)
            ..style = PaintingStyle.fill,
-         children: [CircleHitbox()],
        );
+
+  @override
+  Future<void> onLoad() async {
+    super.onLoad();
+    add(CircleHitbox());
+    add(BallTrailComponent(this));
+  }
 
   final Vector2 velocity;
   final double difficultyModifier;
+  
+  // Maximum speed to prevent ball from going too fast
+  static const double maxSpeed = 1000.0;
 
   @override
   void update(double dt) {
     super.update(dt);
     position += velocity * dt;
+    
+    // Cap the ball's speed to prevent it from becoming too fast
+    final currentSpeed = velocity.length;
+    if (currentSpeed > maxSpeed) {
+      velocity.normalize();
+      velocity.scale(maxSpeed);
+    }
   }
 
   @override // Add from here...
@@ -41,10 +59,25 @@ class Ball extends CircleComponent
     if (other is PlayArea) {
       if (intersectionPoints.first.y <= 0) {
         velocity.y = -velocity.y;
+        // Wall bounce sound and particles
+        game.world.add(ParticleEffects.ballImpact(
+          position: position.clone(),
+          color: Colors.lightBlue,
+        ));
       } else if (intersectionPoints.first.x <= 0) {
         velocity.x = -velocity.x;
+        // Wall bounce sound and particles
+        game.world.add(ParticleEffects.ballImpact(
+          position: position.clone(),
+          color: Colors.lightBlue,
+        ));
       } else if (intersectionPoints.first.x >= game.width) {
         velocity.x = -velocity.x;
+        // Wall bounce sound and particles
+        game.world.add(ParticleEffects.ballImpact(
+          position: position.clone(),
+          color: Colors.lightBlue,
+        ));
       } else if (intersectionPoints.first.y >= game.height) {
         add(
           RemoveEffect(
@@ -61,8 +94,16 @@ class Ball extends CircleComponent
       velocity.x =
           velocity.x +
           (position.x - other.position.x) / other.size.x * game.width * 0.3;
+      
+      // Paddle bounce sound and particles
+      game.world.add(ParticleEffects.ballImpact(
+        position: position.clone(),
+        color: Colors.orange,
+      ));
     } else if (other is Brick) {
-      // Modify from here...
+      // Brick bounce sound (brick destruction sound is handled in Brick.onCollisionStart)
+      
+      // Ball-brick collision particles are handled in Brick.onCollisionStart
       if (position.y < other.position.y - other.size.y / 2) {
         velocity.y = -velocity.y;
       } else if (position.y > other.position.y + other.size.y / 2) {

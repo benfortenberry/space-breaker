@@ -8,7 +8,7 @@ import '../brick_breaker.dart';
 class PlayArea extends RectangleComponent with HasGameReference<BrickBreaker> {
   PlayArea()
     : super(
-        paint: Paint()..color = const Color(0xfff2e8cf),
+        paint: Paint()..color = Colors.transparent, // Make transparent to show animated background
         children: [RectangleHitbox()],
       );
 

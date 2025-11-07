@@ -6,6 +6,7 @@ import '../brick_breaker.dart';
 import '../config.dart';
 import 'overlay_screen.dart'; // Add this import
 import 'game_hud.dart';
+import 'animated_gradient_background.dart';
 
 class GameApp extends StatefulWidget {
   const GameApp({super.key});
@@ -29,19 +30,12 @@ class _GameAppState extends State<GameApp> {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         textTheme: GoogleFonts.pressStart2pTextTheme().apply(
-          bodyColor: const Color(0xff184e77),
-          displayColor: const Color(0xff184e77),
+          bodyColor: const Color.fromARGB(255, 255, 255, 255),
+          displayColor: const Color.fromARGB(255, 255, 255, 255),
         ),
       ),
       home: Scaffold(
-        body: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [Color(0xffa9d6e5), Color(0xfff2e8cf)],
-            ),
-          ),
+        body: AnimatedGradientBackground(
           child: SafeArea(
             child: Padding(
               padding: const EdgeInsets.all(16),
@@ -49,7 +43,7 @@ class _GameAppState extends State<GameApp> {
                 child: Column(
                   // Modify from here...
                   children: [
-                    GameHud(score: game.score, lives: game.lives),
+                    GameHud(score: game.score, lives: game.lives, level: game.level),
                     Expanded(
                       child: FittedBox(
                         child: SizedBox(
@@ -69,9 +63,21 @@ class _GameAppState extends State<GameApp> {
                                     subtitle: 'Tap to Play Again',
                                   ),
                               PlayState.won.name: (context, game) =>
-                                  const OverlayScreen(
-                                    title: 'Y O U   W O N ! ! !',
-                                    subtitle: 'Tap to Play Again',
+                                  ValueListenableBuilder<int>(
+                                    valueListenable: this.game.level,
+                                    builder: (context, level, child) {
+                                      if (level >= maxLevel) {
+                                        return const OverlayScreen(
+                                          title: 'GAME COMPLETE!',
+                                          subtitle: 'You beat all levels! Tap to play again',
+                                        );
+                                      } else {
+                                        return OverlayScreen(
+                                          title: 'LEVEL $level COMPLETE!',
+                                          subtitle: 'Tap to continue to Level ${level + 1}',
+                                        );
+                                      }
+                                    },
                                   ),
                             },
                           ),

@@ -23,9 +23,14 @@ class BrickBreaker extends FlameGame
 
   final ValueNotifier<int> score = ValueNotifier(0);
   final ValueNotifier<int> lives = ValueNotifier(initialLives);
+  final ValueNotifier<int> level = ValueNotifier(1);
   final rand = math.Random();
   double get width => size.x;
   double get height => size.y;
+  
+  // Track held keys for smooth bat movement
+  bool _leftPressed = false;
+  bool _rightPressed = false;
 
   late PlayState _playState; // Add from here...
   PlayState get playState => _playState;
@@ -49,21 +54,62 @@ class BrickBreaker extends FlameGame
 
     camera.viewfinder.anchor = Anchor.topLeft;
 
+    // Add animated background first (renders behind everything)
+    world.add(AnimatedBackground());
+    
     world.add(PlayArea());
 
     playState = PlayState.welcome;
   }
 
-  void startGame() {
+  @override
+  void update(double dt) {
+    super.update(dt);
+    
+    // Move bat continuously while keys are held
     if (playState == PlayState.playing) {
+      final bats = world.children.query<Bat>();
+      if (bats.isNotEmpty) {
+        final bat = bats.first;
+        if (_leftPressed) {
+          bat.moveBy(-batStep);
+        }
+        if (_rightPressed) {
+          bat.moveBy(batStep);
+        }
+      }
+    }
+  }
+
+  void startGame() {
+    print('DEBUG: startGame() called with playState: $playState, level: ${level.value}');
+    
+    if (playState == PlayState.playing) {
+      print('DEBUG: Already playing, returning');
       return;
     }
     
     // Only reset score and lives when starting a completely new game
     if (playState == PlayState.welcome || playState == PlayState.gameOver) {
+      print('DEBUG: New game - resetting score and lives');
       score.value = 0;
       lives.value = initialLives;
+      level.value = 1; // Reset to level 1 for new games
+     
+    } else if (playState == PlayState.won) {
+      // Level complete - advance to next level
+      print('DEBUG: Level won - current level: ${level.value}');
+      if (level.value < maxLevel) {
+        level.value++; // Advance to next level
+        print('DEBUG: Advanced to level: ${level.value}');
+      }
+     
     }
+    
+    // Get level configuration AFTER level is updated
+    final currentLevel = level.value;
+    final config = levelConfigs[currentLevel] ?? levelConfigs[maxLevel]!;
+    print('DEBUG: Starting level $currentLevel with config: ${config.rows} rows, speed factor: ${config.ballSpeedFactor}');
     
     playState = PlayState.playing;
     // remove any existing dynamic game components so we
@@ -82,42 +128,104 @@ class BrickBreaker extends FlameGame
         velocity: Vector2(
           (rand.nextDouble() - 0.5) * width,
           height * 0.2,
-        ).normalized()..scale(height / 4),
+        ).normalized()..scale((height / 4) * config.ballSpeedFactor),
       ),
     );
 
     world.add(
       // Add from here...
       Bat(
-        size: Vector2(batWidth, batHeight),
+        size: Vector2(batWidth * config.batSizeFactor, batHeight),
         cornerRadius: const Radius.circular(ballRadius / 2),
         position: Vector2(width / 2, height * 0.95),
       ),
     );
 
+    // Calculate colors and brick width for this level
+    final colorsToUse = config.endColor - config.startColor + 1;
+    final brickWidthForLevel = 
+        (gameWidth - (brickGutter * (colorsToUse + 1))) / colorsToUse;
+    
     world.addAll([
-      // Add from here...
-      for (var i = 0; i < brickColors.length; i++)
-        for (var j = 1; j <= 5; j++)
+      // Add bricks based on level configuration
+      for (var row = 1; row <= config.rows; row++)
+        for (var col = 0; col < colorsToUse; col++)
           Brick(
             position: Vector2(
-              (i + 0.5) * brickWidth + (i + 1) * brickGutter,
-              (j + 2.0) * brickHeight + j * brickGutter,
+              (col + 0.5) * brickWidthForLevel + (col + 1) * brickGutter,
+              (row + 2.0) * brickHeight + row * brickGutter,
             ),
-            color: brickColors[i],
+            color: brickColors[(config.startColor + col) % brickColors.length],
           ),
     ]);
+
+
+    
   }
 
   void loseLife() {
+    print('DEBUG: loseLife() called - current lives: ${lives.value}');
     lives.value--;
+    print('DEBUG: Lives after decrement: ${lives.value}');
+    print('DEBUG: Checking game over condition: lives.value <= 0 is ${lives.value <= 0}');
     
     if (lives.value <= 0) {
       // Game over - no more lives
+      print('DEBUG: GAME OVER - Setting playState to gameOver');
+      
+      // Remove ball and bat
+      world.removeAll(world.children.query<Ball>());
+      // world.removeAll(world.children.query<Bat>());
+      
       playState = PlayState.gameOver;
+      print('DEBUG: playState is now: $playState');
     } else {
-      // Respawn with remaining lives
-      respawnBall();
+      // Still have lives - restart this level
+      print('DEBUG: Still have ${lives.value} lives - restarting level ${level.value}');
+      
+      // Remove ball and bat only (keep bricks and score)
+      world.removeAll(world.children.query<Ball>());
+      // world.removeAll(world.children.query<Bat>());
+      
+      // Re-add ball and bat without changing playState or resetting lives
+      final config = levelConfigs[level.value] ?? levelConfigs[maxLevel]!;
+      
+      world.add(
+        Ball(
+          difficultyModifier: difficultyModifier,
+          radius: ballRadius,
+          position: size / 2,
+          velocity: Vector2(
+            (rand.nextDouble() - 0.5) * width,
+            height * 0.2,
+          ).normalized()..scale((height / 4) * config.ballSpeedFactor),
+        ),
+      );
+
+      // world.add(
+      //   Bat(
+      //     size: Vector2(batWidth * config.batSizeFactor, batHeight),
+      //     cornerRadius: const Radius.circular(ballRadius / 2),
+      //     position: Vector2(width / 2, height * 0.95),
+      //   ),
+      // );
+    }
+  }
+
+  void checkLevelComplete() {
+    final remainingBricks = world.children.query<Brick>().length;
+    print('DEBUG: checkLevelComplete - remaining bricks: $remainingBricks, current level: ${level.value}');
+    if (remainingBricks == 0) {
+      // Level complete!
+      if (level.value < maxLevel) {
+        print('DEBUG: Level ${level.value} complete, setting playState to won');
+        playState = PlayState.won; // This will show the level complete overlay
+        print('DEBUG: playState is now: $playState');
+      } else {
+        // Game completed - all levels finished!
+        print('DEBUG: All levels complete!');
+        playState = PlayState.gameOver;
+      }
     }
   }
   
@@ -142,7 +250,9 @@ class BrickBreaker extends FlameGame
   @override // Add from here...
   void onTap() {
     super.onTap();
+    print('DEBUG: onTap called, current playState: $playState, current level: ${level.value}');
     startGame();
+    print('DEBUG: After startGame, level is now: ${level.value}, playState: $playState');
   }
 
   @override // Add from here...
@@ -151,18 +261,64 @@ class BrickBreaker extends FlameGame
     Set<LogicalKeyboardKey> keysPressed,
   ) {
     super.onKeyEvent(event, keysPressed);
-    switch (event.logicalKey) {
-      case LogicalKeyboardKey.arrowLeft:
-        world.children.query<Bat>().first.moveBy(-batStep);
-      case LogicalKeyboardKey.arrowRight:
-        world.children.query<Bat>().first.moveBy(batStep);
-      case LogicalKeyboardKey.space: // Add from here...
-      case LogicalKeyboardKey.enter:
-        startGame();
+    
+    // Debug shortcuts (only on key down)
+    if (event is KeyDownEvent) {
+      // Press 'W' to win current level
+      if (event.logicalKey == LogicalKeyboardKey.keyW) {
+        print('DEBUG: Manual win triggered');
+        playState = PlayState.won;
+        return KeyEventResult.handled;
+      }
+      // Press 'L' to lose a life
+      if (event.logicalKey == LogicalKeyboardKey.keyL) {
+        print('DEBUG: Manual life loss triggered');
+        loseLife();
+        return KeyEventResult.handled;
+      }
+      // Press 'G' to trigger game over
+      if (event.logicalKey == LogicalKeyboardKey.keyG) {
+        print('DEBUG: Manual game over triggered');
+        lives.value = 0;
+        playState = PlayState.gameOver;
+        return KeyEventResult.handled;
+      }
     }
+    
+    // Track arrow key press/release for continuous movement
+    if (event is KeyDownEvent) {
+      if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
+        _leftPressed = true;
+        return KeyEventResult.handled;
+      }
+      if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
+        _rightPressed = true;
+        return KeyEventResult.handled;
+      }
+    } else if (event is KeyUpEvent) {
+      if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
+        _leftPressed = false;
+        return KeyEventResult.handled;
+      }
+      if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
+        _rightPressed = false;
+        return KeyEventResult.handled;
+      }
+    }
+    
+    // Other controls
+    if (event is KeyDownEvent) {
+      switch (event.logicalKey) {
+        case LogicalKeyboardKey.space:
+        case LogicalKeyboardKey.enter:
+          startGame();
+          return KeyEventResult.handled;
+      }
+    }
+    
     return KeyEventResult.handled;
   }
 }
 
 @override
-Color backgroundColor() => const Color(0xfff2e8cf);
+Color backgroundColor() => Colors.transparent; // Let animated background show through

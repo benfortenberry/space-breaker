@@ -17,16 +17,36 @@ class Bat extends PositionComponent
   final Radius cornerRadius;
 
   final _paint = Paint()
-    ..color = const Color(0xFF002C4D)
+    ..color = const Color.fromARGB(255, 255, 255, 255)
     ..style = PaintingStyle.fill;
+
+  @override
+  Future<void> onLoad() async {
+    await super.onLoad();
+    
+    // Expand the drag area by making the component's interactive size larger
+    // This doesn't affect rendering or collision, just touch/drag detection
+    // Make it 3x taller to make it easier to grab
+    size = Vector2(size.x, size.y * 3);
+  }
 
   @override
   void render(Canvas canvas) {
     super.render(canvas);
+    // Only render the visible bat (1/3 of the component height, centered)
+    final visibleHeight = size.y / 3;
+    final offsetY = (size.y - visibleHeight) / 2;
+    
+    canvas.save();
+    canvas.translate(0, offsetY);
     canvas.drawRRect(
-      RRect.fromRectAndRadius(Offset.zero & size.toSize(), cornerRadius),
+      RRect.fromRectAndRadius(
+        Offset.zero & Size(size.x, visibleHeight),
+        cornerRadius,
+      ),
       _paint,
     );
+    canvas.restore();
   }
 
   @override
