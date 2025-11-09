@@ -10,16 +10,16 @@ const batStep = gameWidth * 0.02;  // Increased from 0.05 for faster bat movemen
                        
 
 const brickColors = [                                           
-  Color(0xfff94144),
-  Color(0xfff3722c),
-  Color(0xfff8961e),
-  Color(0xfff9844a),
-  Color(0xfff9c74f),
-  Color(0xff90be6d),
-  Color(0xff43aa8b),
-  Color(0xff4d908e),
-  Color(0xff277da1),
-  Color(0xff577590),
+  Color(0xfff94144), // #f94144 - Red
+  Color(0xfff3722c), // #f3722c - Orange-Red
+  Color(0xfff8961e), // #f8961e - Orange
+  Color(0xfff9844a), // #f9844a - Light Orange
+  Color(0xfff9c74f), // #f9c74f - Yellow
+  Color(0xff90be6d), // #90be6d - Green
+  Color(0xff43aa8b), // #43aa8b - Teal
+  Color(0xff4d908e), // #4d908e - Blue-Green
+  Color(0xff277da1), // #277da1 - Blue
+  Color(0xff577590), // #577590 - Gray-Blue
 ];
 
 const brickGutter = gameWidth * 0.015;                         

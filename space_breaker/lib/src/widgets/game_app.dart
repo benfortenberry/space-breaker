@@ -45,8 +45,8 @@ class _GameAppState extends State<GameApp> {
                   // Modify from here...
                   children: [
                     GameHud(
-                      score: game.score, 
-                      lives: game.lives, 
+                      score: game.score,
+                      lives: game.lives,
                       level: game.level,
                       game: game,
                     ),
@@ -77,12 +77,14 @@ class _GameAppState extends State<GameApp> {
                                       if (level >= maxLevel) {
                                         return const OverlayScreen(
                                           title: 'GAME COMPLETE!',
-                                          subtitle: 'You beat all levels! Tap to play again',
+                                          subtitle:
+                                              'You beat all levels! Tap to play again',
                                         );
                                       } else {
                                         return OverlayScreen(
                                           title: 'LEVEL $level COMPLETE!',
-                                          subtitle: 'Tap to continue to Level ${level + 1}',
+                                          subtitle:
+                                              'Tap to continue to Level ${level + 1}',
                                         );
                                       }
                                     },

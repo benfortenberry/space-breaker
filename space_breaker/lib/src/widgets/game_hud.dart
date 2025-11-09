@@ -4,8 +4,8 @@ import 'dart:async';
 
 class GameHud extends StatefulWidget {
   const GameHud({
-    super.key, 
-    required this.score, 
+    super.key,
+    required this.score,
     required this.lives,
     required this.level,
     required this.game,
@@ -22,7 +22,7 @@ class GameHud extends StatefulWidget {
 
 class _GameHudState extends State<GameHud> {
   Timer? _rebuildTimer;
-  
+
   @override
   void initState() {
     super.initState();
@@ -30,7 +30,7 @@ class _GameHudState extends State<GameHud> {
     widget.score.addListener(_onUpdate);
     widget.lives.addListener(_onUpdate);
     widget.level.addListener(_onUpdate);
-    
+
     // Also rebuild periodically to catch play state changes
     _rebuildTimer = Timer.periodic(const Duration(milliseconds: 500), (_) {
       if (mounted) {
@@ -58,11 +58,10 @@ class _GameHudState extends State<GameHud> {
   @override
   Widget build(BuildContext context) {
     // Use consistent text style for all HUD elements
-    final hudTextStyle = Theme.of(context).textTheme.titleMedium!.copyWith(
-      color: Colors.white,
-      fontSize: 12,
-    );
-    
+    final hudTextStyle = Theme.of(
+      context,
+    ).textTheme.titleMedium!.copyWith(color: Colors.white, fontSize: 12);
+
     return Stack(
       children: [
         // Score, Level, Lives in a row
@@ -104,18 +103,16 @@ class _GameHudState extends State<GameHud> {
                       builder: (context, highScore, child) {
                         return Text(
                           'High: $highScore'.toUpperCase(),
-                          style: hudTextStyle.copyWith(
-                            color: Colors.yellow,
-                          ),
+                          style: hudTextStyle.copyWith(color: Colors.yellow),
                         );
                       },
                     ),
                   ],
                 ),
               ),
-              
+
               // const SizedBox(width: 16), // Reduced space to prevent overflow
-             
+
               // Lives display
               Flexible(
                 flex: 1, // Take up 1x space (left side has 3x)
@@ -123,13 +120,17 @@ class _GameHudState extends State<GameHud> {
                   valueListenable: widget.lives,
                   builder: (context, livesCount, child) {
                     // Scale down heart size as lives increase to maintain constant width
-                    final heartSize = livesCount <= 3 ? 20.0 : (60.0 / livesCount).clamp(12.0, 20.0);
-                    
+                    final heartSize = livesCount <= 3
+                        ? 20.0
+                        : (60.0 / livesCount).clamp(12.0, 20.0);
+
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const SizedBox(height: 48), // Extra space to avoid button overlap
+                        const SizedBox(
+                          height: 48,
+                        ), // Extra space to avoid button overlap
                         // Display heart icons for lives
                         SizedBox(
                           width: 100, // Fixed width container
@@ -137,9 +138,14 @@ class _GameHudState extends State<GameHud> {
                             mainAxisAlignment: MainAxisAlignment.end,
                             mainAxisSize: MainAxisSize.min,
                             children: List.generate(
-                              livesCount.clamp(0, 10), // Max 10 hearts for display
+                              livesCount.clamp(
+                                0,
+                                10,
+                              ), // Max 10 hearts for display
                               (index) => Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 1),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 1,
+                                ),
                                 child: Icon(
                                   Icons.favorite,
                                   color: Colors.red,
@@ -157,7 +163,7 @@ class _GameHudState extends State<GameHud> {
             ],
           ),
         ),
-        
+
         // Control buttons - top right corner
         Positioned(
           top: 8,
@@ -175,15 +181,15 @@ class _GameHudState extends State<GameHud> {
                   },
                   tooltip: 'Pause',
                 ),
-              
+
               const SizedBox(width: 8),
-              
+
               // Mute button
               IconButton(
                 icon: Icon(
-                  widget.game.audioService.isMuted 
-                    ? Icons.volume_off 
-                    : Icons.volume_up,
+                  widget.game.audioService.isMuted
+                      ? Icons.volume_off
+                      : Icons.volume_up,
                   color: Colors.white,
                 ),
                 iconSize: 28,
@@ -202,6 +208,4 @@ class _GameHudState extends State<GameHud> {
       ],
     );
   }
-
-
 }

@@ -24,9 +24,28 @@ dev_dependencies:
   mocktail: ^1.0.3
   integration_test:
     sdk: flutter
+  flutter_launcher_icons: ^0.14.1
 
 flutter:
   uses-material-design: true
   assets:
     - assets/audio/
     - assets/audio/background/
+
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/audio/space_breaker.png"
+  min_sdk_android: 21 # android min sdk min:16, default 21
+  web:
+    generate: true
+    image_path: "assets/audio/space_breaker.png"
+    background_color: "#f94144"
+    theme_color: "#277da1"
+  windows:
+    generate: true
+    image_path: "assets/audio/space_breaker.png"
+    icon_size: 48 # min:48, max:256, default: 48
+  macos:
+    generate: true
+    image_path: "assets/audio/space_breaker.png"
