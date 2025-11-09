@@ -29,10 +29,44 @@
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <title>space_breaker</title>
+  <title>Space Breaker</title>
   <link rel="manifest" href="manifest.json">
+
+  <!-- Audio context fix for web -->
+  <script>
+    // Enable audio context on user interaction
+    document.addEventListener('click', function() {
+      if (window.AudioContext || window.webkitAudioContext) {
+        var context = new (window.AudioContext || window.webkitAudioContext)();
+        if (context.state === 'suspended') {
+          context.resume();
+        }
+      }
+    });
+    
+    // Preload audio for better performance
+    window.addEventListener('load', function() {
+      // Create a silent audio element to unlock audio on mobile
+      var audio = new Audio();
+      audio.src = 'data:audio/mpeg;base64,SUQzBAAAAAABEVRYWFgAAAAtAAADY29tbWVudABCaWdTb3VuZEJhbmsuY29tIC8gTGFTb25vdGhlcXVlLm9yZwBURU5DAAAA';
+      audio.load();
+    });
+  </script>
 </head>
 <body>
+  <!-- Loading indicator -->
+  <div id="loading" style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); font-family: Arial; color: #fff; background: #000; padding: 20px; border-radius: 10px;">
+    Loading Space Breaker...
+  </div>
+  
   <script src="flutter_bootstrap.js" async></script>
+  
+  <!-- Hide loading indicator when Flutter loads -->
+  <script>
+    window.addEventListener('flutter-first-frame', function() {
+      const loading = document.getElementById('loading');
+      if (loading) loading.remove();
+    });
+  </script>
 </body>
 </html>

@@ -6,6 +6,7 @@ import 'package:flame/events.dart';
 import 'components/components.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
 import 'config.dart';
 import 'config/power_up_config.dart';
 import 'dart:math' as math;
@@ -86,9 +87,13 @@ class BrickBreaker extends FlameGame
     // Update high score in real-time when current score exceeds it
     score.addListener(_updateHighScore);
     
-    // Initialize and start background music
+    // Initialize audio service (but don't start background music yet on web)
     await _audioService.initialize();
-    await _audioService.playBackgroundMusic();
+    
+    // Only start background music immediately on non-web platforms
+    if (!kIsWeb) {
+      await _audioService.playBackgroundMusic();
+    }
 
     playState = PlayState.welcome;
   }
@@ -160,6 +165,11 @@ class BrickBreaker extends FlameGame
     
     if (playState == PlayState.playing) {
       return;
+    }
+    
+    // Ensure background music is playing on web after user interaction
+    if (kIsWeb) {
+      _audioService.playBackgroundMusic();
     }
     
     // Only reset score and lives when starting a completely new game
@@ -317,6 +327,12 @@ class BrickBreaker extends FlameGame
   @override
   void onTapDown(TapDownEvent event) {
     super.onTapDown(event);
+    // Ensure audio is unlocked on first user interaction (important for web)
+    _audioService.initialize();
+    // Start background music on web after user interaction
+    if (kIsWeb) {
+      _audioService.playBackgroundMusic();
+    }
     startGame();
   }
 
@@ -327,19 +343,8 @@ class BrickBreaker extends FlameGame
   ) {
     super.onKeyEvent(event, keysPressed);
     
-    // Debug shortcuts (only on key down)
-    if (event is KeyDownEvent) {
-      // Press 'P' or ESC to pause/unpause
-      if (event.logicalKey == LogicalKeyboardKey.keyP || 
-          event.logicalKey == LogicalKeyboardKey.escape) {
-        if (playState == PlayState.playing) {
-          pauseGame();
-        } else if (playState == PlayState.paused) {
-          resumeGame();
-        }
-        return KeyEventResult.handled;
-      }
-      
+    // Debug shortcuts (only in debug mode and on key down)
+    if (kDebugMode && event is KeyDownEvent) {
       // Press 'W' to win current level
       if (event.logicalKey == LogicalKeyboardKey.keyW) {
         playState = PlayState.won;
@@ -361,6 +366,20 @@ class BrickBreaker extends FlameGame
         _highScoreService.clearHighScore();
         highScore.value = 0;
         print('🔄 High score reset to 0');
+        return KeyEventResult.handled;
+      }
+    }
+    
+    // Game controls (work in both debug and release)
+    if (event is KeyDownEvent) {
+      // Press 'P' or ESC to pause/unpause
+      if (event.logicalKey == LogicalKeyboardKey.keyP || 
+          event.logicalKey == LogicalKeyboardKey.escape) {
+        if (playState == PlayState.playing) {
+          pauseGame();
+        } else if (playState == PlayState.paused) {
+          resumeGame();
+        }
         return KeyEventResult.handled;
       }
     }

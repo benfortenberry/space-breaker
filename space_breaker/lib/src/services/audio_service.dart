@@ -1,6 +1,7 @@
 import 'package:audioplayers/audioplayers.dart';
 import 'dart:math' as math;
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 
 class AudioService {
   static final AudioService _instance = AudioService._internal();
@@ -8,6 +9,7 @@ class AudioService {
   AudioService._internal();
 
   final AudioPlayer _sfxPlayer = AudioPlayer();
+  bool _webAudioUnlocked = false;
 
   bool _musicEnabled = true;
   bool _sfxEnabled = true;
@@ -41,9 +43,34 @@ class AudioService {
     await _sfxPlayer.setVolume(_sfxVolume);
     await _sfxPlayer.setReleaseMode(ReleaseMode.release);
     
+    // Web-specific audio unlock
+    if (kIsWeb && !_webAudioUnlocked) {
+      await _unlockWebAudio();
+    }
+    
     print(
-      'AudioService initialized - Music enabled: $_musicEnabled, SFX enabled: $_sfxEnabled, Music volume: $_musicVolume',
+      'AudioService initialized - Music enabled: $_musicEnabled, SFX enabled: $_sfxEnabled, Music volume: $_musicVolume, Web: $kIsWeb',
     );
+  }
+  
+  Future<void> _unlockWebAudio() async {
+    try {
+      // Create a silent audio to unlock audio context on web
+      final player = AudioPlayer();
+      await player.setVolume(0);
+      await player.play(AssetSource('audio/boop.wav')); // Use existing audio file
+      await player.stop();
+      await player.dispose();
+      _webAudioUnlocked = true;
+      print('Web audio unlocked successfully');
+      
+      // Start background music now that audio is unlocked
+      if (_musicEnabled && !_allMuted && _activeMusicPlayers.isEmpty) {
+        await _playNextRandomTrack();
+      }
+    } catch (e) {
+      print('Failed to unlock web audio: $e');
+    }
   }
 
   Future<void> playBackgroundMusic() async {
@@ -51,6 +78,13 @@ class AudioService {
       print('Music disabled or muted, not playing background music');
       return;
     }
+    
+    // On web, don't start background music until user interaction
+    if (kIsWeb && !_webAudioUnlocked) {
+      print('Web audio not yet unlocked, waiting for user interaction');
+      return;
+    }
+    
     print('Starting background music...');
     await _playNextRandomTrack();
   }
@@ -135,6 +169,12 @@ class AudioService {
       print('SFX disabled or muted, not playing $soundName');
       return;
     }
+    
+    // Web audio unlock on first user interaction
+    if (kIsWeb && !_webAudioUnlocked) {
+      await _unlockWebAudio();
+    }
+    
     try {
       print('Playing sound: $soundName at volume $_sfxVolume');
       print('Audio file path: audio/$soundName');
