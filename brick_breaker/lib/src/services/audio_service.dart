@@ -183,6 +183,15 @@ class AudioService {
   Future<void> playGameOver() async {
     await playSoundEffect('gameover.wav');
   }
+  
+  Future<void> playPowerUp() async {
+    print('Playing power-up sound');
+    await playSoundEffect('power_up3.wav');
+  }
+  
+  Future<void> playGameWon() async {
+    await playSoundEffect('game_won.wav');
+  }
 
   void toggleMusic() {
     _musicEnabled = !_musicEnabled;

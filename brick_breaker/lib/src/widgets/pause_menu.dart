@@ -17,18 +17,18 @@ class PauseMenu extends StatelessWidget {
         child: Card(
           color: Colors.black87,
           child: Padding(
-            padding: const EdgeInsets.all(32.0),
+            padding: const EdgeInsets.all(48.0), // Increased from 32 to 48
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   'PAUSED',
-                  style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                  style: Theme.of(context).textTheme.displayMedium?.copyWith( // Changed from displaySmall to displayMedium
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
                       ),
                 ),
-                const SizedBox(height: 40),
+                const SizedBox(height: 48), // Increased from 40 to 48
                 _MenuButton(
                   text: 'RESUME',
                   icon: Icons.play_arrow,
@@ -75,16 +75,16 @@ class _MenuButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 200,
+      width: 280, // Increased from 200 to 280
       child: ElevatedButton.icon(
         onPressed: onPressed,
-        icon: Icon(icon),
+        icon: Icon(icon, size: 24), // Added explicit icon size
         label: Text(text),
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xff0f3460),
           foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
-          textStyle: Theme.of(context).textTheme.titleMedium,
+          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 32), // Increased padding
+          textStyle: Theme.of(context).textTheme.titleLarge, // Changed from titleMedium to titleLarge
         ),
       ),
     );

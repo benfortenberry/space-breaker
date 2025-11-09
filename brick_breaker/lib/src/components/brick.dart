@@ -32,7 +32,7 @@ class Brick extends RectangleComponent
     super.onCollisionStart(intersectionPoints, other);
     
     // Add score for destroying brick
-    game.score.value += 10;
+    game.score.value += 1;
     
     // Play brick blast sound
     game.audioService.playBrickBlast();
@@ -63,7 +63,12 @@ class Brick extends RectangleComponent
     final bricksCount = game.world.children.query<Brick>().length;
     removeFromParent();
     if (bricksCount == 1) {
-      game.audioService.playLevelClear(); // Play level up sound
+      // Check if this is the final level
+      if (game.level.value >= 10) {
+        game.audioService.playGameWon(); // Play game won sound for final level
+      } else {
+        game.audioService.playLevelClear(); // Play level up sound
+      }
       game.playState = PlayState.won;
     }
   }

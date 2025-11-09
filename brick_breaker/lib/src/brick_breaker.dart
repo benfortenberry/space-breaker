@@ -407,6 +407,9 @@ class BrickBreaker extends FlameGame
   void activatePowerUp(PowerUpType type) {
     final config = powerUpConfigs[type]!;
     
+    // Play power-up sound
+    _audioService.playPowerUp();
+    
     // Remove existing timer for this power-up type if it exists
     _activePowerUps[type]?.removeFromParent();
     
@@ -451,7 +454,9 @@ class BrickBreaker extends FlameGame
       //   }
         
       case PowerUpType.extraLife:
-        lives.value++;
+        if (lives.value < 5) {
+          lives.value++;
+        }
     }
   }
 
@@ -460,7 +465,8 @@ class BrickBreaker extends FlameGame
     if (bats.isNotEmpty) {
       final bat = bats.first;
       final config = levelConfigs[level.value] ?? levelConfigs[maxLevel]!;
-      bat.size = Vector2(batWidth * config.batSizeFactor * _batSizeMultiplier, batHeight);
+      // Only update width, keep height at 3x batHeight for drag area
+      bat.size = Vector2(batWidth * config.batSizeFactor * _batSizeMultiplier, batHeight * 3);
     }
   }
 

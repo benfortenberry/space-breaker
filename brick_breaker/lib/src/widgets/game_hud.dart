@@ -60,7 +60,7 @@ class _GameHudState extends State<GameHud> {
     // Use consistent text style for all HUD elements
     final hudTextStyle = Theme.of(context).textTheme.titleMedium!.copyWith(
       color: Colors.white,
-      fontSize: 16,
+      fontSize: 12,
     );
     
     return Stack(
@@ -74,6 +74,7 @@ class _GameHudState extends State<GameHud> {
             children: [
               // Score and Level display
               Flexible(
+                flex: 3, // Take up 3x the space of the right side
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
@@ -81,13 +82,9 @@ class _GameHudState extends State<GameHud> {
                     ValueListenableBuilder<int>(
                       valueListenable: widget.score,
                       builder: (context, score, child) {
-                        return FittedBox(
-                          fit: BoxFit.scaleDown,
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            'Score: $score'.toUpperCase(),
-                            style: hudTextStyle,
-                          ),
+                        return Text(
+                          'Score: $score'.toUpperCase(),
+                          style: hudTextStyle,
                         );
                       },
                     ),
@@ -95,13 +92,9 @@ class _GameHudState extends State<GameHud> {
                     ValueListenableBuilder<int>(
                       valueListenable: widget.level,
                       builder: (context, level, child) {
-                        return FittedBox(
-                          fit: BoxFit.scaleDown,
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            'Level: $level'.toUpperCase(),
-                            style: hudTextStyle,
-                          ),
+                        return Text(
+                          'Level: $level'.toUpperCase(),
+                          style: hudTextStyle,
                         );
                       },
                     ),
@@ -109,14 +102,10 @@ class _GameHudState extends State<GameHud> {
                     ValueListenableBuilder<int>(
                       valueListenable: widget.game.highScore,
                       builder: (context, highScore, child) {
-                        return FittedBox(
-                          fit: BoxFit.scaleDown,
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            'High: $highScore'.toUpperCase(),
-                            style: hudTextStyle.copyWith(
-                              color: Colors.yellow,
-                            ),
+                        return Text(
+                          'High: $highScore'.toUpperCase(),
+                          style: hudTextStyle.copyWith(
+                            color: Colors.yellow,
                           ),
                         );
                       },
@@ -125,10 +114,11 @@ class _GameHudState extends State<GameHud> {
                 ),
               ),
               
-              const SizedBox(width: 80), // Space for centered pause button
+              // const SizedBox(width: 16), // Reduced space to prevent overflow
              
               // Lives display
               Flexible(
+                flex: 1, // Take up 1x space (left side has 3x)
                 child: ValueListenableBuilder<int>(
                   valueListenable: widget.lives,
                   builder: (context, livesCount, child) {
@@ -139,7 +129,7 @@ class _GameHudState extends State<GameHud> {
                       crossAxisAlignment: CrossAxisAlignment.end,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 48), // Extra space to avoid button overlap
                         // Display heart icons for lives
                         SizedBox(
                           width: 100, // Fixed width container
@@ -168,44 +158,45 @@ class _GameHudState extends State<GameHud> {
           ),
         ),
         
-        // Pause button - absolutely centered, only visible during gameplay
-        if (widget.game.playState == PlayState.playing)
-          Positioned(
-            top: 8,
-            left: 0,
-            right: 0,
-            child: Center(
-              child: IconButton(
-                icon: const Icon(Icons.pause, color: Colors.white),
+        // Control buttons - top right corner
+        Positioned(
+          top: 8,
+          right: 16,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Pause button - only visible during gameplay
+              if (widget.game.playState == PlayState.playing)
+                IconButton(
+                  icon: const Icon(Icons.pause, color: Colors.white),
+                  iconSize: 28,
+                  onPressed: () {
+                    widget.game.pauseGame();
+                  },
+                  tooltip: 'Pause',
+                ),
+              
+              const SizedBox(width: 8),
+              
+              // Mute button
+              IconButton(
+                icon: Icon(
+                  widget.game.audioService.isMuted 
+                    ? Icons.volume_off 
+                    : Icons.volume_up,
+                  color: Colors.white,
+                ),
                 iconSize: 28,
                 onPressed: () {
-                  widget.game.pauseGame();
+                  widget.game.audioService.toggleMuteAll();
+                  // Force rebuild to update icon
+                  if (mounted) {
+                    setState(() {});
+                  }
                 },
-                tooltip: 'Pause',
+                tooltip: widget.game.audioService.isMuted ? 'Unmute' : 'Mute',
               ),
-            ),
-          ),
-        
-        // Mute button - top right corner, below life icons
-        Positioned(
-          top: 50,
-          right: 16,
-          child: IconButton(
-            icon: Icon(
-              widget.game.audioService.isMuted 
-                ? Icons.volume_off 
-                : Icons.volume_up,
-              color: Colors.white,
-            ),
-            iconSize: 24,
-            onPressed: () {
-              widget.game.audioService.toggleMuteAll();
-              // Force rebuild to update icon
-              if (mounted) {
-                setState(() {});
-              }
-            },
-            tooltip: widget.game.audioService.isMuted ? 'Unmute' : 'Mute',
+            ],
           ),
         ),
       ],
