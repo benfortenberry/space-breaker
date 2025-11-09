@@ -31,7 +31,7 @@ class ParticleEffects {
               renderer: (canvas, particle) {
                 // Fade from brick color to transparent
                 final alpha = (1.0 - particle.progress).clamp(0.0, 1.0);
-                final color = brickColor.withOpacity(alpha);
+                final color = brickColor.withValues(alpha: alpha);
                 
                 // Shrink particle over time
                 final size = (1.0 - particle.progress * 0.7) * 4.0;
@@ -70,7 +70,7 @@ class ParticleEffects {
             child: ComputedParticle(
               renderer: (canvas, particle) {
                 final alpha = (1.0 - particle.progress).clamp(0.0, 1.0);
-                final sparkleColor = color.withOpacity(alpha);
+                final sparkleColor = color.withValues(alpha: alpha);
                 final size = (1.0 - particle.progress * 0.5) * 3.0;
                 
                 canvas.drawCircle(
@@ -107,7 +107,7 @@ class ParticleEffects {
             child: ComputedParticle(
               renderer: (canvas, particle) {
                 final alpha = (1.0 - particle.progress).clamp(0.0, 1.0) * 0.6;
-                final trailColor = color.withOpacity(alpha);
+                final trailColor = color.withValues(alpha: alpha);
                 final size = (1.0 - particle.progress) * 2.5;
                 
                 canvas.drawCircle(
@@ -160,7 +160,7 @@ class ParticleEffects {
               renderer: (canvas, particle) {
                 // Bright at start, fade out
                 final alpha = (1.0 - particle.progress).clamp(0.0, 1.0);
-                final particleColor = color.withOpacity(alpha);
+                final particleColor = color.withValues(alpha: alpha);
                 
                 // Start large, shrink over time
                 final baseSize = 6.0 + _random.nextDouble() * 8.0;
@@ -170,7 +170,7 @@ class ParticleEffects {
                 canvas.drawCircle(
                   Offset.zero,
                   size * 1.5,
-                  Paint()..color = particleColor.withOpacity(alpha * 0.3),
+                  Paint()..color = particleColor.withValues(alpha: alpha * 0.3),
                 );
                 
                 canvas.drawCircle(
@@ -209,7 +209,7 @@ class ParticleEffects {
             child: ComputedParticle(
               renderer: (canvas, particle) {
                 final alpha = (1.0 - particle.progress).clamp(0.0, 1.0);
-                final glowColor = color.withOpacity(alpha);
+                final glowColor = color.withValues(alpha: alpha);
                 final size = 4.0 * (1.0 - particle.progress * 0.5);
                 
                 canvas.drawCircle(

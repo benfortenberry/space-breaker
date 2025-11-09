@@ -113,8 +113,8 @@ class GradientBackgroundPainter extends CustomPainter {
       // Create radial gradient for orb
       final gradient = RadialGradient(
         colors: [
-          Colors.white.withOpacity(0.05 * pulse),
-          Colors.white.withOpacity(0.02 * pulse),
+          Colors.white.withValues(alpha: 0.05 * pulse),
+          Colors.white.withValues(alpha: 0.02 * pulse),
           Colors.transparent,
         ],
         stops: const [0.0, 0.5, 1.0],
@@ -148,7 +148,7 @@ class GradientBackgroundPainter extends CustomPainter {
       final twinkle = math.sin(animationValue * 4 * math.pi + seed) * 0.5 + 0.5;
       final starSize = (1.0 + twinkle) * 1.5;
       
-      paint.color = Colors.white.withOpacity(0.3 + twinkle * 0.4);
+      paint.color = Colors.white.withValues(alpha: 0.3 + twinkle * 0.4);
       
       // Draw star as small circle
       canvas.drawCircle(

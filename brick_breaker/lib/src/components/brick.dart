@@ -1,12 +1,13 @@
 import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
 import 'package:flutter/material.dart';
+import 'dart:math' as math;
 
 import '../brick_breaker.dart';
 import '../config.dart';
-import 'ball.dart';
-import 'bat.dart';
+import '../config/power_up_config.dart';
 import 'particle_effects.dart';
+import 'power_up.dart';
 
 class Brick extends RectangleComponent
     with CollisionCallbacks, HasGameReference<BrickBreaker> {
@@ -30,6 +31,11 @@ class Brick extends RectangleComponent
   ) {
     super.onCollisionStart(intersectionPoints, other);
     
+    // Add score for destroying brick
+    game.score.value += 10;
+    
+    // Play brick blast sound
+    game.audioService.playBrickBlast();
     
     // Create explosion particles at brick position
     game.world.add(
@@ -39,38 +45,26 @@ class Brick extends RectangleComponent
       ),
     );
     
-    // Check if this is the last brick BEFORE removing it
-    final bricksCount = game.world.children.query<Brick>().length;
-    print('DEBUG BRICK: Bricks count before removing this one: $bricksCount');
-    final isLastBrick = bricksCount == 1;
-    
-    removeFromParent();
-    game.score.value++;
-
-    // If this was the last brick, complete the level
-    if (isLastBrick) {
-      print('DEBUG BRICK: This was the last brick! Completing level ${game.level.value}...');
+    // Randomly drop power-up (20% chance)
+    final random = math.Random();
+    if (random.nextDouble() < 0.20) {
+      final powerUpTypes = PowerUpType.values;
+      final randomPowerUp = powerUpTypes[random.nextInt(powerUpTypes.length)];
       
-      // Add celebration particles
       game.world.add(
-        ParticleEffects.celebration(
-          position: Vector2(game.width / 2, game.height / 2),
-          gameSize: Vector2(game.width, game.height),
+        PowerUp(
+          powerUpType: randomPowerUp,
+          position: position.clone(),
         ),
       );
-      
-      // Complete the level directly without recounting bricks
-      if (game.level.value < maxLevel) {
-        print('DEBUG BRICK: Level ${game.level.value} complete, setting playState to won');
-        game.playState = PlayState.won;
-        print('DEBUG BRICK: playState is now: ${game.playState}');
-      } else {
-        print('DEBUG BRICK: All levels complete!');
-        game.playState = PlayState.gameOver;
-      }
-      
-      game.world.removeAll(game.world.children.query<Ball>());
-      game.world.removeAll(game.world.children.query<Bat>());
+    }
+    
+    // Check if this is the last brick BEFORE removing it
+    final bricksCount = game.world.children.query<Brick>().length;
+    removeFromParent();
+    if (bricksCount == 1) {
+      game.audioService.playLevelClear(); // Play level up sound
+      game.playState = PlayState.won;
     }
   }
 }

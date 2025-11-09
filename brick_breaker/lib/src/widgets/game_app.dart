@@ -7,6 +7,7 @@ import '../config.dart';
 import 'overlay_screen.dart'; // Add this import
 import 'game_hud.dart';
 import 'animated_gradient_background.dart';
+import 'pause_menu.dart';
 
 class GameApp extends StatefulWidget {
   const GameApp({super.key});
@@ -43,7 +44,12 @@ class _GameAppState extends State<GameApp> {
                 child: Column(
                   // Modify from here...
                   children: [
-                    GameHud(score: game.score, lives: game.lives, level: game.level),
+                    GameHud(
+                      score: game.score, 
+                      lives: game.lives, 
+                      level: game.level,
+                      game: game,
+                    ),
                     Expanded(
                       child: FittedBox(
                         child: SizedBox(
@@ -57,6 +63,8 @@ class _GameAppState extends State<GameApp> {
                                     title: 'TAP TO PLAY',
                                     subtitle: 'Use arrow keys or swipe',
                                   ),
+                              PlayState.paused.name: (context, game) =>
+                                  PauseMenu(game: this.game),
                               PlayState.gameOver.name: (context, game) =>
                                   const OverlayScreen(
                                     title: 'G A M E   O V E R',

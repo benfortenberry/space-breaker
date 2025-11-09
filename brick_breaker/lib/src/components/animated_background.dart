@@ -70,7 +70,7 @@ class AnimatedBackground extends Component with HasGameReference<BrickBreaker> {
 
   void _renderStars(Canvas canvas) {
     final paint = Paint()
-      ..color = Colors.white.withOpacity(0.3)
+      ..color = Colors.white.withValues(alpha: 0.3)
       ..style = PaintingStyle.fill;
 
     // Create 20 animated stars
@@ -90,7 +90,7 @@ class AnimatedBackground extends Component with HasGameReference<BrickBreaker> {
       canvas.drawCircle(
         Offset(x + offsetX, y + offsetY),
         size,
-        paint..color = Colors.white.withOpacity(0.2 + pulse * 0.3),
+        paint..color = Colors.white.withValues(alpha: 0.2 + pulse * 0.3),
       );
     }
   }

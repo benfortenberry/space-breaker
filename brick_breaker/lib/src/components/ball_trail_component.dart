@@ -8,7 +8,7 @@ class BallTrailComponent extends Component
     with HasGameReference<BrickBreaker> {
   
   Timer? _trailTimer;
-  late Ball _ball;
+  late final Ball _ball;
   
   BallTrailComponent(this._ball);
 

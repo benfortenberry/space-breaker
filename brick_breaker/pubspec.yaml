@@ -14,6 +14,7 @@ dependencies:
   flutter_animate: ^4.5.2
   google_fonts: ^6.2.1
   audioplayers: ^6.1.0
+  shared_preferences: ^2.3.3
 
 dev_dependencies:
   flutter_test:
@@ -28,3 +29,4 @@ flutter:
   uses-material-design: true
   assets:
     - assets/audio/
+    - assets/audio/background/

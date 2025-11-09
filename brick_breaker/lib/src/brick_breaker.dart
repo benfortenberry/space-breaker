@@ -2,17 +2,20 @@ import 'dart:async';
 
 import 'package:flame/components.dart';
 import 'package:flame/game.dart';
-import 'package:flame/input.dart';
+import 'package:flame/events.dart';
 import 'components/components.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'config.dart';
+import 'config/power_up_config.dart';
 import 'dart:math' as math;
+import 'services/high_score_service.dart';
+import 'services/audio_service.dart';
 
-enum PlayState { welcome, playing, gameOver, won }
+enum PlayState { welcome, playing, gameOver, won, paused }
 
 class BrickBreaker extends FlameGame
-    with HasCollisionDetection, KeyboardEvents, TapDetector {
+    with HasCollisionDetection, KeyboardEvents, TapCallbacks {
   BrickBreaker()
     : super(
         camera: CameraComponent.withFixedResolution(
@@ -24,15 +27,26 @@ class BrickBreaker extends FlameGame
   final ValueNotifier<int> score = ValueNotifier(0);
   final ValueNotifier<int> lives = ValueNotifier(initialLives);
   final ValueNotifier<int> level = ValueNotifier(1);
+  final ValueNotifier<int> highScore = ValueNotifier(0);
+  final HighScoreService _highScoreService = HighScoreService();
+  final AudioService _audioService = AudioService();
   final rand = math.Random();
   double get width => size.x;
   double get height => size.y;
+  
+  // Expose audio service for components
+  AudioService get audioService => _audioService;
+  
+  // Power-up tracking
+  final Map<PowerUpType, TimerComponent?> _activePowerUps = {};
+  double _batSizeMultiplier = 1.0;
+  double _ballSpeedMultiplier = 1.0;
   
   // Track held keys for smooth bat movement
   bool _leftPressed = false;
   bool _rightPressed = false;
 
-  late PlayState _playState; // Add from here...
+  PlayState _playState = PlayState.welcome; // Initialize with default value
   PlayState get playState => _playState;
   set playState(PlayState playState) {
     _playState = playState;
@@ -40,11 +54,18 @@ class BrickBreaker extends FlameGame
       case PlayState.welcome:
       case PlayState.gameOver:
       case PlayState.won:
+        // Remove all balls when level is won
+        if (playState == PlayState.won) {
+          world.removeAll(world.children.query<Ball>());
+        }
+        overlays.add(playState.name);
+      case PlayState.paused:
         overlays.add(playState.name);
       case PlayState.playing:
         overlays.remove(PlayState.welcome.name);
         overlays.remove(PlayState.gameOver.name);
         overlays.remove(PlayState.won.name);
+        overlays.remove(PlayState.paused.name);
     }
   }
 
@@ -59,12 +80,35 @@ class BrickBreaker extends FlameGame
     
     world.add(PlayArea());
 
+    // Load high score
+    highScore.value = await _highScoreService.getHighScore();
+    
+    // Update high score in real-time when current score exceeds it
+    score.addListener(_updateHighScore);
+    
+    // Initialize and start background music
+    await _audioService.initialize();
+    await _audioService.playBackgroundMusic();
+
     playState = PlayState.welcome;
+  }
+  
+  void _updateHighScore() {
+    if (score.value > highScore.value) {
+      highScore.value = score.value;
+      // Persist the new high score immediately
+      _highScoreService.saveHighScore(score.value);
+    }
   }
 
   @override
   void update(double dt) {
     super.update(dt);
+    
+    // Don't update game logic while paused
+    if (playState == PlayState.paused) {
+      return;
+    }
     
     // Move bat continuously while keys are held
     if (playState == PlayState.playing) {
@@ -81,27 +125,53 @@ class BrickBreaker extends FlameGame
     }
   }
 
+  void pauseGame() {
+    if (playState == PlayState.playing) {
+      playState = PlayState.paused;
+      pauseEngine();
+      _audioService.pauseBackgroundMusic();
+    }
+  }
+
+  void resumeGame() {
+    if (playState == PlayState.paused) {
+      playState = PlayState.playing;
+      resumeEngine();
+      _audioService.resumeBackgroundMusic();
+    }
+  }
+
+  void restartGame() {
+    resumeEngine(); // Make sure engine is running
+    lives.value = initialLives;
+    score.value = 0;
+    // Keep current level or reset to 1 as desired
+    // level.value = 1;
+    playState = PlayState.welcome;
+    startGame();
+  }
+
+  void quitToMenu() {
+    resumeEngine(); // Make sure engine is running
+    playState = PlayState.welcome;
+  }
+
   void startGame() {
-    print('DEBUG: startGame() called with playState: $playState, level: ${level.value}');
     
     if (playState == PlayState.playing) {
-      print('DEBUG: Already playing, returning');
       return;
     }
     
     // Only reset score and lives when starting a completely new game
     if (playState == PlayState.welcome || playState == PlayState.gameOver) {
-      print('DEBUG: New game - resetting score and lives');
       score.value = 0;
       lives.value = initialLives;
       level.value = 1; // Reset to level 1 for new games
      
     } else if (playState == PlayState.won) {
       // Level complete - advance to next level
-      print('DEBUG: Level won - current level: ${level.value}');
       if (level.value < maxLevel) {
         level.value++; // Advance to next level
-        print('DEBUG: Advanced to level: ${level.value}');
       }
      
     }
@@ -109,7 +179,6 @@ class BrickBreaker extends FlameGame
     // Get level configuration AFTER level is updated
     final currentLevel = level.value;
     final config = levelConfigs[currentLevel] ?? levelConfigs[maxLevel]!;
-    print('DEBUG: Starting level $currentLevel with config: ${config.rows} rows, speed factor: ${config.ballSpeedFactor}');
     
     playState = PlayState.playing;
     // remove any existing dynamic game components so we
@@ -164,24 +233,32 @@ class BrickBreaker extends FlameGame
   }
 
   void loseLife() {
-    print('DEBUG: loseLife() called - current lives: ${lives.value}');
+    // Don't lose life if level is complete or game is not playing
+    if (playState != PlayState.playing) {
+      return;
+    }
+    
     lives.value--;
-    print('DEBUG: Lives after decrement: ${lives.value}');
-    print('DEBUG: Checking game over condition: lives.value <= 0 is ${lives.value <= 0}');
+    
+    // Play life lost sound
+    _audioService.playLifeLost();
     
     if (lives.value <= 0) {
       // Game over - no more lives
-      print('DEBUG: GAME OVER - Setting playState to gameOver');
+      
+      // Play game over sound
+      _audioService.playGameOver();
+      
+      // Save high score
+      _saveHighScoreIfNeeded();
       
       // Remove ball and bat
       world.removeAll(world.children.query<Ball>());
       // world.removeAll(world.children.query<Bat>());
       
       playState = PlayState.gameOver;
-      print('DEBUG: playState is now: $playState');
     } else {
       // Still have lives - restart this level
-      print('DEBUG: Still have ${lives.value} lives - restarting level ${level.value}');
       
       // Remove ball and bat only (keep bricks and score)
       world.removeAll(world.children.query<Ball>());
@@ -212,20 +289,10 @@ class BrickBreaker extends FlameGame
     }
   }
 
-  void checkLevelComplete() {
-    final remainingBricks = world.children.query<Brick>().length;
-    print('DEBUG: checkLevelComplete - remaining bricks: $remainingBricks, current level: ${level.value}');
-    if (remainingBricks == 0) {
-      // Level complete!
-      if (level.value < maxLevel) {
-        print('DEBUG: Level ${level.value} complete, setting playState to won');
-        playState = PlayState.won; // This will show the level complete overlay
-        print('DEBUG: playState is now: $playState');
-      } else {
-        // Game completed - all levels finished!
-        print('DEBUG: All levels complete!');
-        playState = PlayState.gameOver;
-      }
+  Future<void> _saveHighScoreIfNeeded() async {
+    final isNewHigh = await _highScoreService.saveHighScore(score.value);
+    if (isNewHigh) {
+      highScore.value = score.value;
     }
   }
   
@@ -247,12 +314,10 @@ class BrickBreaker extends FlameGame
     );
   }
 
-  @override // Add from here...
-  void onTap() {
-    super.onTap();
-    print('DEBUG: onTap called, current playState: $playState, current level: ${level.value}');
+  @override
+  void onTapDown(TapDownEvent event) {
+    super.onTapDown(event);
     startGame();
-    print('DEBUG: After startGame, level is now: ${level.value}, playState: $playState');
   }
 
   @override // Add from here...
@@ -264,25 +329,45 @@ class BrickBreaker extends FlameGame
     
     // Debug shortcuts (only on key down)
     if (event is KeyDownEvent) {
+      // Press 'P' or ESC to pause/unpause
+      if (event.logicalKey == LogicalKeyboardKey.keyP || 
+          event.logicalKey == LogicalKeyboardKey.escape) {
+        if (playState == PlayState.playing) {
+          pauseGame();
+        } else if (playState == PlayState.paused) {
+          resumeGame();
+        }
+        return KeyEventResult.handled;
+      }
+      
       // Press 'W' to win current level
       if (event.logicalKey == LogicalKeyboardKey.keyW) {
-        print('DEBUG: Manual win triggered');
         playState = PlayState.won;
         return KeyEventResult.handled;
       }
       // Press 'L' to lose a life
       if (event.logicalKey == LogicalKeyboardKey.keyL) {
-        print('DEBUG: Manual life loss triggered');
         loseLife();
         return KeyEventResult.handled;
       }
       // Press 'G' to trigger game over
       if (event.logicalKey == LogicalKeyboardKey.keyG) {
-        print('DEBUG: Manual game over triggered');
         lives.value = 0;
         playState = PlayState.gameOver;
         return KeyEventResult.handled;
       }
+      // Press 'R' to reset high score (debug only)
+      if (event.logicalKey == LogicalKeyboardKey.keyR) {
+        _highScoreService.clearHighScore();
+        highScore.value = 0;
+        print('🔄 High score reset to 0');
+        return KeyEventResult.handled;
+      }
+    }
+    
+    // Don't process movement keys while paused
+    if (playState == PlayState.paused) {
+      return KeyEventResult.handled;
     }
     
     // Track arrow key press/release for continuous movement
@@ -317,6 +402,105 @@ class BrickBreaker extends FlameGame
     }
     
     return KeyEventResult.handled;
+  }
+
+  void activatePowerUp(PowerUpType type) {
+    final config = powerUpConfigs[type]!;
+    
+    // Remove existing timer for this power-up type if it exists
+    _activePowerUps[type]?.removeFromParent();
+    
+    switch (type) {
+      case PowerUpType.widerBat:
+        _batSizeMultiplier = 1.5;
+        _updateBatSize();
+        
+        if (config.duration > 0) {
+          final timer = TimerComponent(
+            period: config.duration,
+            repeat: false,
+            onTick: () {
+              _batSizeMultiplier = 1.0;
+              _updateBatSize();
+              _activePowerUps.remove(type);
+            },
+          );
+          add(timer);
+          _activePowerUps[type] = timer;
+        }
+        
+      case PowerUpType.multiBall:
+        _spawnExtraBalls();
+        
+      // case PowerUpType.slowerBall:
+      //   _ballSpeedMultiplier = 0.5;
+      //   _updateBallSpeeds();
+        
+      //   if (config.duration > 0) {
+      //     final timer = TimerComponent(
+      //       period: config.duration,
+      //       repeat: false,
+      //       onTick: () {
+      //         _ballSpeedMultiplier = 1.0;
+      //         _updateBallSpeeds();
+      //         _activePowerUps.remove(type);
+      //       },
+      //     );
+      //     add(timer);
+      //     _activePowerUps[type] = timer;
+      //   }
+        
+      case PowerUpType.extraLife:
+        lives.value++;
+    }
+  }
+
+  void _updateBatSize() {
+    final bats = world.children.query<Bat>();
+    if (bats.isNotEmpty) {
+      final bat = bats.first;
+      final config = levelConfigs[level.value] ?? levelConfigs[maxLevel]!;
+      bat.size = Vector2(batWidth * config.batSizeFactor * _batSizeMultiplier, batHeight);
+    }
+  }
+
+  void _updateBallSpeeds() {
+    final balls = world.children.query<Ball>();
+    for (final ball in balls) {
+      ball.velocity.scale(_ballSpeedMultiplier);
+    }
+  }
+
+  void _spawnExtraBalls() {
+    final balls = world.children.query<Ball>().toList();
+    if (balls.isEmpty) return;
+    
+    final originalBall = balls.first;
+    final config = levelConfigs[level.value] ?? levelConfigs[maxLevel]!;
+    
+    // Spawn 2 extra balls
+    for (int i = 0; i < 2; i++) {
+      final angle = (rand.nextDouble() - 0.5) * 1.5; // Random angle
+      world.add(
+        Ball(
+          difficultyModifier: difficultyModifier,
+          radius: ballRadius,
+          position: originalBall.position.clone(),
+          velocity: Vector2(
+            originalBall.velocity.x + math.cos(angle) * 100,
+            originalBall.velocity.y + math.sin(angle) * 100,
+          ).normalized()..scale((height / 4) * config.ballSpeedFactor * _ballSpeedMultiplier),
+          isPowerUpBall: true, // Mark as power-up ball for different color
+        ),
+      );
+    }
+  }
+
+  final ValueNotifier<int> coinCount = ValueNotifier(0);
+
+  void addCoin() {
+    coinCount.value++;
+    score.value += 100; // Award points for collecting a coin
   }
 }
 
